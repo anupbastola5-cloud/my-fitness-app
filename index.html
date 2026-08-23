@@ -39,6 +39,8 @@ button{
   font-size:16px;
 }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2196F3">
 </head>
 
 <body>
@@ -191,6 +193,10 @@ function nextDay(){
 }
 
 </script>
-
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
 </body>
 </html>
