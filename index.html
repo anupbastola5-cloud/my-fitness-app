@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Fitness App</title>
+
+<style>
+body{
+  margin:0;
+  background:#111;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+}
+h1{margin:15px 0 5px}
+#camera{
+  width:100%;
+  max-width:500px;
+  border-radius:15px;
+  transform:scaleX(-1);
+}
+.box{
+  margin:15px auto;
+  max-width:500px;
+  padding:15px;
+  background:#222;
+  border-radius:15px;
+}
+.big{
+  font-size:45px;
+  font-weight:bold;
+}
+button{
+  padding:12px 20px;
+  margin:5px;
+  border:0;
+  border-radius:10px;
+  font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🏋️ My Fitness App</h1>
+
+<div class="box">
+  <div>Day <span id="day">1</span></div>
+  <div>Today's Target</div>
+  <div class="big"><span id="target">30</span></div>
+
+  <div>Completed</div>
+  <div class="big"><span id="count">0</span></div>
+
+  <div id="status">Camera सुरु गर</div>
+
+  <button onclick="startCamera()">📷 Start Camera</button>
+  <button onclick="resetCount()">Reset</button>
+</div>
+
+<video id="camera" autoplay playsinline></video>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+
+let count = 0;
+let down = false;
+
+let day =
+  Number(localStorage.getItem("day")) || 1;
+
+let target =
+  Math.min(30 + (day - 1) * 5, 100);
+
+document.getElementById("day").innerText = day;
+document.getElementById("target").innerText = target;
+
+function resetCount(){
+  count = 0;
+  document.getElementById("count").innerText = count;
+  document.getElementById("status").innerText = "Ready";
+}
+
+function startCamera(){
+
+  const video =
+    document.getElementById("camera");
+
+  const pose = new Pose({
+    locateFile: file =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+  });
+
+  pose.setOptions({
+    modelComplexity:1,
+    smoothLandmarks:true,
+    enableSegmentation:false,
+    minDetectionConfidence:0.5,
+    minTrackingConfidence:0.5
+  });
+
+  pose.onResults(results => {
+
+    if(!results.poseLandmarks) return;
+
+    const lm = results.poseLandmarks;
+
+    // Right side landmarks
+    const hip = lm[24];
+    const knee = lm[26];
+    const ankle = lm[28];
+
+    if(!hip || !knee || !ankle) return;
+
+    const angle =
+      calculateAngle(hip,knee,ankle);
+
+    // Squat down
+    if(angle < 100){
+      down = true;
+    }
+
+    // Come back up = 1 rep
+    if(angle > 160 && down){
+
+      down = false;
+
+      if(count < target){
+        count++;
+
+        document.getElementById("count")
+          .innerText = count;
+
+        if(count >= target){
+          document.getElementById("status")
+            .innerText = "🎉 Target Complete!";
+        }
+      }
+    }
+  });
+
+  const camera = new Camera(video,{
+    onFrame: async () => {
+      await pose.send({image:video});
+    },
+    width:480,
+    height:640
+  });
+
+  camera.start();
+
+  document.getElementById("status")
+    .innerText = "Camera चलिरहेको छ...";
+}
+
+
+// Calculate angle at knee
+function calculateAngle(a,b,c){
+
+  const radians =
+    Math.atan2(c.y-b.y,c.x-b.x) -
+    Math.atan2(a.y-b.y,a.x-b.x);
+
+  let angle =
+    Math.abs(radians * 180 / Math.PI);
+
+  if(angle > 180)
+    angle = 360 - angle;
+
+  return angle;
+}
+
+
+// Automatically move to next day
+function nextDay(){
+
+  if(count >= target){
+
+    day++;
+
+    if(day > 15)
+      day = 15;
+
+    localStorage.setItem("day",day);
+
+    location.reload();
+  }
+}
+
+</script>
+
+</body>
+</html>
